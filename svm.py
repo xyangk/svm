@@ -27,6 +27,7 @@ def simple_smo(data, label, C, epoch, tol=0.001):
     iter = 0
     b = 0
     while iter < epoch:
+        num_alpha_changed = 0
         for i in range(n):
             gi = float(np.dot(np.multiply(alpha ,label).T, np.dot(data, data[i,:].T))) + b
             yi = label[i]
@@ -65,8 +66,13 @@ def simple_smo(data, label, C, epoch, tol=0.001):
                 else:
                     continue
                 alpha[j] = aj_
+                if abs(aj_ - aj) < 0.00001:
+                    continue # 变化太小时不更新
+                    # pass
                 ai_ = ai + yi*yj *(aj_ - aj)
                 alpha[i] = ai_
+
+                num_alpha_changed += 1
 
                 b_i = b - Ei - yi*kii*(ai_ - ai) - yj*kij*(aj_ - aj)
                 b_j = b - Ej - yi*kij*(ai_ - ai) - yj*kjj*(aj_ - aj)
@@ -79,7 +85,13 @@ def simple_smo(data, label, C, epoch, tol=0.001):
                 
                 b = b_new
                 # print("ai: {}, aj: {}, b: {}".format(ai_, aj_, b_new))
-        iter += 1
+
+        #当所有点都满足KKT条件时退出
+        if num_alpha_changed == 0:
+            iter += 1
+        else:
+            iter = 0
+            # iter += 1
     return alpha, b
 
 def train(data, label, C, epoch, tol=0.001):
@@ -95,11 +107,36 @@ def train(data, label, C, epoch, tol=0.001):
 
 if __name__ == "__main__":
     from sklearn.datasets import make_blobs
-    x, y = make_blobs(n_samples=10000, n_features=2, centers=2, random_state=1)
+    import matplotlib.pyplot as plt
+    from sklearn.svm import SVC
+
+    x, y = make_blobs(n_samples=1000, n_features=2, centers=2)#, random_state=1)
     y = np.reshape(y, (-1, 1))
     y[y<1] = -1
     # print(y)
     st = time.time()
-    print(train(x, y, 0.6, 40))
+    w, b = train(x, y, 0.6, 40)
+    print(w, b)
     et = time.time()
     print('cost time: {}'.format(et - st))
+
+    #sklearn svm
+    clf = SVC(gamma='auto', C=0.6, kernel='linear')
+    clf.fit(x, np.squeeze(y))
+    print(clf.score(x, np.squeeze(y)))
+    w_sk = np.squeeze(clf.coef_ )
+    b_sk = clf.intercept_ 
+    print('sklearn param:, ', w_sk, b_sk)
+
+    plt.scatter(x[:, 0], x[:, 1], c=np.squeeze(y))
+    
+    # 直线方程 w_1 * x_1 + w_2 * x_2 + b = 0, 那么 x_2 = -(w_1*x_1+b)/w_2
+    w = np.squeeze(w)
+    x_1s = np.array([np.min(x[:, 0]), np.max(x[:, 0])])
+    x_2s = -(x_1s * w[0] + b) / w[1]
+    plt.plot(x_1s, x_2s, color='b')
+
+    x_2sk = -(x_1s * w_sk[0] + b_sk) / w_sk[1]
+    plt.plot(x_1s, x_2sk, color='r')
+
+    plt.show()
