@@ -32,15 +32,15 @@ def simple_smo(data, label, C, epoch, tol=0.001):
             gi = float(np.dot(np.multiply(alpha ,label).T, np.dot(data, data[i,:].T))) + b
             yi = label[i]
             Ei = gi - yi
-            ai = alpha[i] #alpha_i
+            ai = np.copy(alpha[i]) #alpha_i
             # 判断该点是否违背KKT条件
             if (yi*Ei < -tol and ai < C) or (yi*Ei > tol and ai > 0):
                 #随机选择第二个拉格朗日乘子，j != i
                 j = selectJ(i, n)
-                gj = float(np.dot(np.multiply(alpha ,label).T, np.dot(data, data[j,:]))) + b
+                gj = float(np.dot(np.multiply(alpha ,label).T, np.dot(data, data[j,:].T))) + b
                 yj = label[j]
                 Ej = gj - yj
-                aj = alpha[j] # alpgha_j
+                aj = np.copy(alpha[j]) # alpgha_j
 
                 # 计算alpha的下限L 和 上限H
                 if yi != yj:
